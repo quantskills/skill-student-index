@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大学生指数看板 — {date}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }
+.container { max-width: 1200px; margin: 0 auto; }
+.header { text-align: center; padding: 30px 0; border-bottom: 1px solid #30363d; margin-bottom: 30px; }
+.header h1 { font-size: 28px; background: linear-gradient(135deg, #58a6ff, #bc8cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header .subtitle { color: #8b949e; font-size: 14px; margin-top: 8px; }
+.header .date { color: #58a6ff; font-size: 16px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
+.card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.card.sell::before { background: #f85149; }
+.card.watch::before { background: #d29922; }
+.card.neutral::before { background: #58a6ff; }
+.card.accumulate::before { background: #3fb950; }
+.card.buy::before { background: #2ea043; }
+.card .plate-name { font-size: 14px; color: #8b949e; margin-bottom: 4px; }
+.card .index-value { font-size: 36px; font-weight: 700; }
+.card .index-value.sell { color: #f85149; }
+.card .index-value.watch { color: #d29922; }
+.card .index-value.neutral { color: #58a6ff; }
+.card .index-value.accumulate { color: #3fb950; }
+.card .index-value.buy { color: #2ea043; }
+.card .interpretation { font-size: 13px; margin-top: 4px; }
+.card .interpretation.sell { color: #f85149; }
+.card .interpretation.watch { color: #d29922; }
+.card .interpretation.neutral { color: #58a6ff; }
+.card .interpretation.accumulate { color: #3fb950; }
+.card .interpretation.buy { color: #2ea043; }
+.card .meta { font-size: 12px; color: #484f58; margin-top: 12px; display: flex; gap: 16px; }
+.card .meta span { display: flex; align-items: center; gap: 4px; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px; }
+.chart-box { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
+.chart-box.full { grid-column: 1 / -1; }
+.chart-box h3 { font-size: 14px; color: #8b949e; margin-bottom: 16px; }
+.chart-box canvas { max-height: 300px; }
+.details { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+.details h3 { font-size: 14px; color: #8b949e; margin-bottom: 16px; }
+.details table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.details th { text-align: left; color: #8b949e; padding: 8px 12px; border-bottom: 1px solid #30363d; font-weight: 500; }
+.details td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+.details tr:hover td { background: #1c2128; }
+.noob-tag { background: #f8514933; color: #f85149; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.normal-tag { background: #3fb95033; color: #3fb950; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.advice { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+.advice h3 { font-size: 14px; color: #8b949e; margin-bottom: 12px; }
+.advice p { font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.advice .sell { color: #f85149; }
+.advice .buy { color: #2ea043; }
+.advice .neutral { color: #e6edf3; }
+.footer { text-align: center; padding: 20px; color: #484f58; font-size: 12px; border-top: 1px solid #30363d; }
+@media (max-width: 768px) { .charts { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📊 大学生指数 (Student Index)</h1>
+    <div class="subtitle">基于擦鞋童理论的学生党情绪反向指标</div>
+    <div class="date">{date}</div>
+  </div>
+
+  <div class="cards">
+    {cards_html}
+  </div>
+
+  <div class="charts">
+    <div class="chart-box">
+      <h3>各板块大学生指数对比</h3>
+      <canvas id="indexChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>学生党帖占比 vs 学生党强度</h3>
+      <canvas id="detailChart"></canvas>
+    </div>
+    <div class="chart-box full">
+      <h3>各维度评分分布</h3>
+      <canvas id="dimensionChart"></canvas>
+    </div>
+  </div>
+
+  <div class="advice">
+    <h3>💡 操作建议</h3>
+    <p class="{advice_class}">{advice_text}</p>
+  </div>
+
+  <div class="details">
+    <h3>📋 典型学生党帖分析</h3>
+    <table>
+      <thead>
+        <tr><th>板块</th><th>帖子</th><th>类型</th><th>评分</th><th>方向</th><th>匹配信号</th></tr>
+      </thead>
+      <tbody>
+        {table_rows}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    大学生指数 (Student Index) — 数据仅供参考，不构成投资建议 | 基于擦鞋童理论的学生党情绪反向指标
+  </div>
+</div>
+
+<script>
+const indexData = {index_chart_data};
+new Chart(document.getElementById('indexChart'), {
+  type: 'bar',
+  data: {
+    labels: indexData.labels,
+    datasets: [{
+      label: '大学生指数',
+      data: indexData.values,
+      backgroundColor: indexData.colors,
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) { return '指数: ' + ctx.raw; }
+        }
+      }
+    },
+    scales: {
+      y: { beginAtZero: true, max: 100, grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+      x: { grid: { display: false }, ticks: { color: '#8b949e' } }
+    }
+  }
+});
+
+const detailData = {detail_chart_data};
+new Chart(document.getElementById('detailChart'), {
+  type: 'bar',
+  data: {
+    labels: detailData.labels,
+    datasets: [
+      { label: '学生党占比(%)', data: detailData.ratios, backgroundColor: '#f8514966', borderRadius: 4 },
+      { label: '学生党强度', data: detailData.intensities, backgroundColor: '#58a6ff66', borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#8b949e' } } },
+    scales: {
+      y: { beginAtZero: true, max: 100, grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+      x: { grid: { display: false }, ticks: { color: '#8b949e' } }
+    }
+  }
+});
+
+const dimData = {dimension_chart_data};
+new Chart(document.getElementById('dimensionChart'), {
+  type: 'radar',
+  data: {
+    labels: dimData.labels,
+    datasets: dimData.datasets.map(d => ({
+      ...d,
+      borderWidth: 2,
+      pointRadius: 3,
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#8b949e' } } },
+    scales: {
+      r: {
+        beginAtZero: true, max: 100,
+        grid: { color: '#21262d' },
+        ticks: { color: '#8b949e', backdropColor: 'transparent' },
+        pointLabels: { color: '#8b949e' }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
