@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+student_index_board_*.html
